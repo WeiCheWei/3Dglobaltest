@@ -1,0 +1,23 @@
+# 系統檔案
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 臨時檔案
+*.log
+*.tmp
+*~
+
+# Node modules (如果之後有使用)
+node_modules/
+
+# 編譯檔案
+*.min.js
+*.min.css
+

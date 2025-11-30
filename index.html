@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D地球儀應用程式</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background: #000;
+      }
+
+      #globeViz {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      .controls {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        max-width: 250px;
+      }
+
+      .controls h3 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        color: #333;
+      }
+
+      .controls button {
+        margin: 5px;
+        padding: 8px 15px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.3s;
+      }
+
+      .controls button:hover {
+        background: #45a049;
+      }
+
+      .controls button:active {
+        transform: scale(0.95);
+      }
+
+      .info {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px 15px;
+        border-radius: 5px;
+        color: #333;
+        font-size: 12px;
+      }
+
+      .zoom-controls {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #ddd;
+      }
+
+      .country-info {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        min-width: 250px;
+        max-width: 350px;
+        display: none;
+      }
+
+      .country-info.active {
+        display: block;
+      }
+
+      .country-info h2 {
+        margin: 0 0 10px 0;
+        color: #333;
+        font-size: 20px;
+        border-bottom: 2px solid #4caf50;
+        padding-bottom: 8px;
+      }
+
+      .country-info .detail {
+        margin: 8px 0;
+        color: #555;
+        font-size: 14px;
+      }
+
+      .country-info .label {
+        font-weight: bold;
+        color: #333;
+        margin-right: 5px;
+      }
+
+      .country-info .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #f44336;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 25px;
+        padding: 0;
+      }
+
+      .country-info .close-btn:hover {
+        background: #d32f2f;
+      }
+
+      .audio-controls {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #ddd;
+      }
+
+      .audio-controls button {
+        background: #2196f3;
+        margin: 5px 5px 0 0;
+      }
+
+      .audio-controls button:hover {
+        background: #1976d2;
+      }
+
+      #loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 20px 40px;
+        border-radius: 10px;
+        font-size: 18px;
+        color: #333;
+        z-index: 2000;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">載入中...</div>
+    <div id="globeViz"></div>
+
+    <div class="controls">
+      <h3>🌍 地球儀控制</h3>
+      <div>
+        <button onclick="autoRotate()">🔄 自動旋轉</button>
+        <button onclick="stopRotation()">⏸️ 停止旋轉</button>
+        <button onclick="resetView()">🏠 重置視角</button>
+      </div>
+      <div class="zoom-controls">
+        <button onclick="zoomIn()">🔍 放大</button>
+        <button onclick="zoomOut()">🔍 縮小</button>
+      </div>
+    </div>
+
+    <div class="country-info" id="countryInfo">
+      <button class="close-btn" onclick="closeCountryInfo()">×</button>
+      <h2 id="countryName">國家名稱</h2>
+      <div class="detail">
+        <span class="label">首都：</span>
+        <span id="capitalName">-</span>
+      </div>
+      <div class="detail">
+        <span class="label">英文名稱：</span>
+        <span id="countryNameEn">-</span>
+      </div>
+      <div class="audio-controls">
+        <button onclick="playAnthem()">🎵 播放國歌</button>
+        <button onclick="stopAnthem()">⏹️ 停止</button>
+      </div>
+    </div>
+
+    <div class="info">💡 提示：點擊國家查看資訊並播放國歌</div>
+
+    <!-- 載入 Globe.gl 和 Three.js 庫 -->
+    <script src="//unpkg.com/three"></script>
+    <script src="//unpkg.com/globe.gl"></script>
+
+    <!-- Audio element for anthem -->
+    <audio id="anthemPlayer" style="display: none"></audio>
+
+    <script>
+      // 世界主要100個國家數據（繁體中文）
+      const countriesData = [
+        {
+          code: "CN",
+          name: "中國",
+          nameEn: "China",
+          capital: "北京",
+          lat: 39.9042,
+          lng: 116.4074,
+        },
+        {
+          code: "IN",
+          name: "印度",
+          nameEn: "India",
+          capital: "新德里",
+          lat: 28.6139,
+          lng: 77.209,
+        },
+        {
+          code: "US",
+          name: "美國",
+          nameEn: "United States",
+          capital: "華盛頓",
+          lat: 38.9072,
+          lng: -77.0369,
+        },
+        {
+          code: "ID",
+          name: "印尼",
+          nameEn: "Indonesia",
+          capital: "雅加達",
+          lat: -6.2088,
+          lng: 106.8456,
+        },
+        {
+          code: "PK",
+          name: "巴基斯坦",
+          nameEn: "Pakistan",
+          capital: "伊斯蘭堡",
+          lat: 33.6844,
+          lng: 73.0479,
+        },
+        {
+          code: "BR",
+          name: "巴西",
+          nameEn: "Brazil",
+          capital: "巴西利亞",
+          lat: -15.8267,
+          lng: -47.9218,
+        },
+        {
+          code: "NG",
+          name: "奈及利亞",
+          nameEn: "Nigeria",
+          capital: "阿布賈",
+          lat: 9.0765,
+          lng: 7.3986,
+        },
+        {
+          code: "BD",
+          name: "孟加拉",
+          nameEn: "Bangladesh",
+          capital: "達卡",
+          lat: 23.8103,
+          lng: 90.4125,
+        },
+        {
+          code: "RU",
+          name: "俄羅斯",
+          nameEn: "Russia",
+          capital: "莫斯科",
+          lat: 55.7558,
+          lng: 37.6173,
+        },
+        {
+          code: "MX",
+          name: "墨西哥",
+          nameEn: "Mexico",
+          capital: "墨西哥城",
+          lat: 19.4326,
+          lng: -99.1332,
+        },
+        {
+          code: "JP",
+          name: "日本",
+          nameEn: "Japan",
+          capital: "東京",
+          lat: 35.6762,
+          lng: 139.6503,
+        },
+        {
+          code: "ET",
+          name: "衣索比亞",
+          nameEn: "Ethiopia",
+          capital: "阿迪斯阿貝巴",
+          lat: 9.032,
+          lng: 38.7469,
+        },
+        {
+          code: "PH",
+          name: "菲律賓",
+          nameEn: "Philippines",
+          capital: "馬尼拉",
+          lat: 14.5995,
+          lng: 120.9842,
+        },
+        {
+          code: "EG",
+          name: "埃及",
+          nameEn: "Egypt",
+          capital: "開羅",
+          lat: 30.0444,
+          lng: 31.2357,
+        },
+        {
+          code: "VN",
+          name: "越南",
+          nameEn: "Vietnam",
+          capital: "河內",
+          lat: 21.0285,
+          lng: 105.8542,
+        },
+        {
+          code: "CD",
+          name: "剛果民主共和國",
+          nameEn: "DR Congo",
+          capital: "金夏沙",
+          lat: -4.4419,
+          lng: 15.2663,
+        },
+        {
+          code: "TR",
+          name: "土耳其",
+          nameEn: "Turkey",
+          capital: "安卡拉",
+          lat: 39.9334,
+          lng: 32.8597,
+        },
+        {
+          code: "IR",
+          name: "伊朗",
+          nameEn: "Iran",
+          capital: "德黑蘭",
+          lat: 35.6892,
+          lng: 51.389,
+        },
+        {
+          code: "DE",
+          name: "德國",
+          nameEn: "Germany",
+          capital: "柏林",
+          lat: 52.52,
+          lng: 13.405,
+        },
+        {
+          code: "TH",
+          name: "泰國",
+          nameEn: "Thailand",
+          capital: "曼谷",
+          lat: 13.7563,
+          lng: 100.5018,
+        },
+        {
+          code: "GB",
+          name: "英國",
+          nameEn: "United Kingdom",
+          capital: "倫敦",
+          lat: 51.5074,
+          lng: -0.1278,
+        },
+        {
+          code: "FR",
+          name: "法國",
+          nameEn: "France",
+          capital: "巴黎",
+          lat: 48.8566,
+          lng: 2.3522,
+        },
+        {
+          code: "IT",
+          name: "義大利",
+          nameEn: "Italy",
+          capital: "羅馬",
+          lat: 41.9028,
+          lng: 12.4964,
+        },
+        {
+          code: "TZ",
+          name: "坦尚尼亞",
+          nameEn: "Tanzania",
+          capital: "多多馬",
+          lat: -6.163,
+          lng: 35.7516,
+        },
+        {
+          code: "ZA",
+          name: "南非",
+          nameEn: "South Africa",
+          capital: "普利托利亞",
+          lat: -25.7479,
+          lng: 28.2293,
+        },
+        {
+          code: "MM",
+          name: "緬甸",
+          nameEn: "Myanmar",
+          capital: "奈比多",
+          lat: 19.7633,
+          lng: 96.0785,
+        },
+        {
+          code: "KR",
+          name: "韓國",
+          nameEn: "South Korea",
+          capital: "首爾",
+          lat: 37.5665,
+          lng: 126.978,
+        },
+        {
+          code: "CO",
+          name: "哥倫比亞",
+          nameEn: "Colombia",
+          capital: "波哥大",
+          lat: 4.711,
+          lng: -74.0721,
+        },
+        {
+          code: "ES",
+          name: "西班牙",
+          nameEn: "Spain",
+          capital: "馬德里",
+          lat: 40.4168,
+          lng: -3.7038,
+        },
+        {
+          code: "AR",
+          name: "阿根廷",
+          nameEn: "Argentina",
+          capital: "布宜諾斯艾利斯",
+          lat: -34.6037,
+          lng: -58.3816,
+        },
+        {
+          code: "DZ",
+          name: "阿爾及利亞",
+          nameEn: "Algeria",
+          capital: "阿爾及爾",
+          lat: 36.7538,
+          lng: 3.0588,
+        },
+        {
+          code: "SD",
+          name: "蘇丹",
+          nameEn: "Sudan",
+          capital: "喀土穆",
+          lat: 15.5007,
+          lng: 32.5599,
+        },
+        {
+          code: "UA",
+          name: "烏克蘭",
+          nameEn: "Ukraine",
+          capital: "基輔",
+          lat: 50.4501,
+          lng: 30.5234,
+        },
+        {
+          code: "UG",
+          name: "烏干達",
+          nameEn: "Uganda",
+          capital: "坎帕拉",
+          lat: 0.3476,
+          lng: 32.5825,
+        },
+        {
+          code: "IQ",
+          name: "伊拉克",
+          nameEn: "Iraq",
+          capital: "巴格達",
+          lat: 33.3152,
+          lng: 44.3661,
+        },
+        {
+          code: "PL",
+          name: "波蘭",
+          nameEn: "Poland",
+          capital: "華沙",
+          lat: 52.2297,
+          lng: 21.0122,
+        },
+        {
+          code: "CA",
+          name: "加拿大",
+          nameEn: "Canada",
+          capital: "渥太華",
+          lat: 45.4215,
+          lng: -75.6972,
+        },
+        {
+          code: "MA",
+          name: "摩洛哥",
+          nameEn: "Morocco",
+          capital: "拉巴特",
+          lat: 34.0209,
+          lng: -6.8416,
+        },
+        {
+          code: "SA",
+          name: "沙烏地阿拉伯",
+          nameEn: "Saudi Arabia",
+          capital: "利雅德",
+          lat: 24.7136,
+          lng: 46.6753,
+        },
+        {
+          code: "UZ",
+          name: "烏茲別克",
+          nameEn: "Uzbekistan",
+          capital: "塔什干",
+          lat: 41.2995,
+          lng: 69.2401,
+        },
+        {
+          code: "PE",
+          name: "秘魯",
+          nameEn: "Peru",
+          capital: "利馬",
+          lat: -12.0464,
+          lng: -77.0428,
+        },
+        {
+          code: "MY",
+          name: "馬來西亞",
+          nameEn: "Malaysia",
+          capital: "吉隆坡",
+          lat: 3.139,
+          lng: 101.6869,
+        },
+        {
+          code: "AF",
+          name: "阿富汗",
+          nameEn: "Afghanistan",
+          capital: "喀布爾",
+          lat: 34.5553,
+          lng: 69.2075,
+        },
+        {
+          code: "VE",
+          name: "委內瑞拉",
+          nameEn: "Venezuela",
+          capital: "卡拉卡斯",
+          lat: 10.4806,
+          lng: -66.9036,
+        },
+        {
+          code: "NP",
+          name: "尼泊爾",
+          nameEn: "Nepal",
+          capital: "加德滿都",
+          lat: 27.7172,
+          lng: 85.324,
+        },
+        {
+          code: "YE",
+          name: "葉門",
+          nameEn: "Yemen",
+          capital: "沙那",
+          lat: 15.5527,
+          lng: 48.5164,
+        },
+        {
+          code: "GH",
+          name: "迦納",
+          nameEn: "Ghana",
+          capital: "阿克拉",
+          lat: 5.6037,
+          lng: -0.187,
+        },
+        {
+          code: "MZ",
+          name: "莫三比克",
+          nameEn: "Mozambique",
+          capital: "馬布多",
+          lat: -25.9655,
+          lng: 32.5832,
+        },
+        {
+          code: "TW",
+          name: "台灣",
+          nameEn: "Taiwan",
+          capital: "台北",
+          lat: 25.033,
+          lng: 121.5654,
+        },
+        {
+          code: "AU",
+          name: "澳洲",
+          nameEn: "Australia",
+          capital: "坎培拉",
+          lat: -35.2809,
+          lng: 149.13,
+        },
+        {
+          code: "KP",
+          name: "北韓",
+          nameEn: "North Korea",
+          capital: "平壤",
+          lat: 39.0392,
+          lng: 125.7625,
+        },
+        {
+          code: "CI",
+          name: "象牙海岸",
+          nameEn: "Ivory Coast",
+          capital: "雅穆索戈",
+          lat: 6.827,
+          lng: -5.2893,
+        },
+        {
+          code: "CM",
+          name: "喀麥隆",
+          nameEn: "Cameroon",
+          capital: "雅溫得",
+          lat: 3.848,
+          lng: 11.5021,
+        },
+        {
+          code: "LK",
+          name: "斯里蘭卡",
+          nameEn: "Sri Lanka",
+          capital: "可倫坡",
+          lat: 6.9271,
+          lng: 79.8612,
+        },
+        {
+          code: "NL",
+          name: "荷蘭",
+          nameEn: "Netherlands",
+          capital: "阿姆斯特丹",
+          lat: 52.3676,
+          lng: 4.9041,
+        },
+        {
+          code: "CL",
+          name: "智利",
+          nameEn: "Chile",
+          capital: "聖地牙哥",
+          lat: -33.4489,
+          lng: -70.6693,
+        },
+        {
+          code: "RO",
+          name: "羅馬尼亞",
+          nameEn: "Romania",
+          capital: "布加勒斯特",
+          lat: 44.4268,
+          lng: 26.1025,
+        },
+        {
+          code: "KZ",
+          name: "哈薩克",
+          nameEn: "Kazakhstan",
+          capital: "阿斯塔納",
+          lat: 51.1694,
+          lng: 71.4491,
+        },
+        {
+          code: "NE",
+          name: "尼日",
+          nameEn: "Niger",
+          capital: "尼阿美",
+          lat: 13.5127,
+          lng: 2.1128,
+        },
+        {
+          code: "BF",
+          name: "布吉納法索",
+          nameEn: "Burkina Faso",
+          capital: "瓦加杜古",
+          lat: 12.3714,
+          lng: -1.5197,
+        },
+        {
+          code: "ML",
+          name: "馬利",
+          nameEn: "Mali",
+          capital: "巴馬科",
+          lat: 12.6392,
+          lng: -8.0029,
+        },
+        {
+          code: "MW",
+          name: "馬拉威",
+          nameEn: "Malawi",
+          capital: "里朗威",
+          lat: -13.9626,
+          lng: 33.7741,
+        },
+        {
+          code: "EC",
+          name: "厄瓜多",
+          nameEn: "Ecuador",
+          capital: "基多",
+          lat: -0.1807,
+          lng: -78.4678,
+        },
+        {
+          code: "GT",
+          name: "瓜地馬拉",
+          nameEn: "Guatemala",
+          capital: "瓜地馬拉城",
+          lat: 14.6349,
+          lng: -90.5069,
+        },
+        {
+          code: "SY",
+          name: "敘利亞",
+          nameEn: "Syria",
+          capital: "大馬士革",
+          lat: 33.5138,
+          lng: 36.2765,
+        },
+        {
+          code: "SN",
+          name: "塞內加爾",
+          nameEn: "Senegal",
+          capital: "達喀爾",
+          lat: 14.6928,
+          lng: -17.4467,
+        },
+        {
+          code: "TD",
+          name: "查德",
+          nameEn: "Chad",
+          capital: "恩賈梅納",
+          lat: 12.1348,
+          lng: 15.0557,
+        },
+        {
+          code: "SO",
+          name: "索馬利亞",
+          nameEn: "Somalia",
+          capital: "摩加迪休",
+          lat: 2.0469,
+          lng: 45.3182,
+        },
+        {
+          code: "ZM",
+          name: "尚比亞",
+          nameEn: "Zambia",
+          capital: "路沙卡",
+          lat: -15.3875,
+          lng: 28.3228,
+        },
+        {
+          code: "ZW",
+          name: "辛巴威",
+          nameEn: "Zimbabwe",
+          capital: "哈拉雷",
+          lat: -17.8252,
+          lng: 31.0335,
+        },
+        {
+          code: "RW",
+          name: "盧安達",
+          nameEn: "Rwanda",
+          capital: "吉佳利",
+          lat: -1.9403,
+          lng: 30.0619,
+        },
+        {
+          code: "GN",
+          name: "幾內亞",
+          nameEn: "Guinea",
+          capital: "科納克里",
+          lat: 9.6412,
+          lng: -13.5784,
+        },
+        {
+          code: "TN",
+          name: "突尼西亞",
+          nameEn: "Tunisia",
+          capital: "突尼斯",
+          lat: 36.8065,
+          lng: 10.1815,
+        },
+        {
+          code: "BE",
+          name: "比利時",
+          nameEn: "Belgium",
+          capital: "布魯塞爾",
+          lat: 50.8503,
+          lng: 4.3517,
+        },
+        {
+          code: "BO",
+          name: "玻利維亞",
+          nameEn: "Bolivia",
+          capital: "拉巴斯",
+          lat: -16.5,
+          lng: -68.15,
+        },
+        {
+          code: "CU",
+          name: "古巴",
+          nameEn: "Cuba",
+          capital: "哈瓦那",
+          lat: 23.1136,
+          lng: -82.3666,
+        },
+        {
+          code: "GR",
+          name: "希臘",
+          nameEn: "Greece",
+          capital: "雅典",
+          lat: 37.9838,
+          lng: 23.7275,
+        },
+        {
+          code: "CZ",
+          name: "捷克",
+          nameEn: "Czech Republic",
+          capital: "布拉格",
+          lat: 50.0755,
+          lng: 14.4378,
+        },
+        {
+          code: "PT",
+          name: "葡萄牙",
+          nameEn: "Portugal",
+          capital: "里斯本",
+          lat: 38.7223,
+          lng: -9.1393,
+        },
+        {
+          code: "JO",
+          name: "約旦",
+          nameEn: "Jordan",
+          capital: "安曼",
+          lat: 31.9454,
+          lng: 35.9284,
+        },
+        {
+          code: "AZ",
+          name: "亞塞拜然",
+          nameEn: "Azerbaijan",
+          capital: "巴庫",
+          lat: 40.4093,
+          lng: 49.8671,
+        },
+        {
+          code: "SE",
+          name: "瑞典",
+          nameEn: "Sweden",
+          capital: "斯德哥爾摩",
+          lat: 59.3293,
+          lng: 18.0686,
+        },
+        {
+          code: "HU",
+          name: "匈牙利",
+          nameEn: "Hungary",
+          capital: "布達佩斯",
+          lat: 47.4979,
+          lng: 19.0402,
+        },
+        {
+          code: "BY",
+          name: "白俄羅斯",
+          nameEn: "Belarus",
+          capital: "明斯克",
+          lat: 53.9006,
+          lng: 27.559,
+        },
+        {
+          code: "AE",
+          name: "阿拉伯聯合大公國",
+          nameEn: "UAE",
+          capital: "阿布達比",
+          lat: 24.4539,
+          lng: 54.3773,
+        },
+        {
+          code: "IL",
+          name: "以色列",
+          nameEn: "Israel",
+          capital: "耶路撒冷",
+          lat: 31.7683,
+          lng: 35.2137,
+        },
+        {
+          code: "HK",
+          name: "香港",
+          nameEn: "Hong Kong",
+          capital: "香港",
+          lat: 22.3193,
+          lng: 114.1694,
+        },
+        {
+          code: "AT",
+          name: "奧地利",
+          nameEn: "Austria",
+          capital: "維也納",
+          lat: 48.2082,
+          lng: 16.3738,
+        },
+        {
+          code: "CH",
+          name: "瑞士",
+          nameEn: "Switzerland",
+          capital: "伯恩",
+          lat: 46.948,
+          lng: 7.4474,
+        },
+        {
+          code: "TJ",
+          name: "塔吉克",
+          nameEn: "Tajikistan",
+          capital: "杜尚別",
+          lat: 38.5598,
+          lng: 68.7738,
+        },
+        {
+          code: "HN",
+          name: "宏都拉斯",
+          nameEn: "Honduras",
+          capital: "德古西加巴",
+          lat: 14.0723,
+          lng: -87.1921,
+        },
+        {
+          code: "DO",
+          name: "多明尼加",
+          nameEn: "Dominican Republic",
+          capital: "聖多明哥",
+          lat: 18.4861,
+          lng: -69.9312,
+        },
+        {
+          code: "DK",
+          name: "丹麥",
+          nameEn: "Denmark",
+          capital: "哥本哈根",
+          lat: 55.6761,
+          lng: 12.5683,
+        },
+        {
+          code: "FI",
+          name: "芬蘭",
+          nameEn: "Finland",
+          capital: "赫爾辛基",
+          lat: 60.1695,
+          lng: 24.9354,
+        },
+        {
+          code: "NO",
+          name: "挪威",
+          nameEn: "Norway",
+          capital: "奧斯陸",
+          lat: 59.9139,
+          lng: 10.7522,
+        },
+        {
+          code: "SG",
+          name: "新加坡",
+          nameEn: "Singapore",
+          capital: "新加坡",
+          lat: 1.3521,
+          lng: 103.8198,
+        },
+        {
+          code: "NZ",
+          name: "紐西蘭",
+          nameEn: "New Zealand",
+          capital: "威靈頓",
+          lat: -41.2865,
+          lng: 174.7762,
+        },
+        {
+          code: "IE",
+          name: "愛爾蘭",
+          nameEn: "Ireland",
+          capital: "都柏林",
+          lat: 53.3498,
+          lng: -6.2603,
+        },
+        {
+          code: "KE",
+          name: "肯亞",
+          nameEn: "Kenya",
+          capital: "奈洛比",
+          lat: -1.2864,
+          lng: 36.8172,
+        },
+      ];
+
+      // 當前選中的國家
+      let selectedCountry = null;
+      let world = null;
+
+      // 初始化地球儀
+      async function initGlobe() {
+        world = Globe()(document.getElementById("globeViz"))
+          .globeImageUrl(
+            "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+          )
+          .bumpImageUrl(
+            "//unpkg.com/three-globe/example/img/earth-topology.png"
+          )
+          .backgroundImageUrl(
+            "//unpkg.com/three-globe/example/img/night-sky.png"
+          )
+          .showAtmosphere(true)
+          .atmosphereColor("lightskyblue")
+          .atmosphereAltitude(0.25);
+
+        // 載入國家邊界數據
+        try {
+          const response = await fetch(
+            "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
+          );
+          const countries = await response.json();
+
+          // 添加國家邊界多邊形
+          world
+            .polygonsData(
+              countries.features.filter((d) => d.properties.ISO_A2 !== "AQ")
+            )
+            .polygonAltitude(0.01)
+            .polygonCapColor(() => "rgba(200, 200, 200, 0.6)")
+            .polygonSideColor(() => "rgba(200, 200, 200, 0.3)")
+            .polygonStrokeColor(() => "#111")
+            .polygonLabel(({ properties: d }) => {
+              const countryData = countriesData.find(
+                (c) => c.code === d.ISO_A2
+              );
+              if (countryData) {
+                return `<div style="background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; color: white;">
+                  <b>${countryData.name}</b><br/>
+                  首都: ${countryData.capital}<br/>
+                  (${countryData.nameEn})
+                </div>`;
+              }
+              return `<b>${d.ADMIN}</b>`;
+            })
+            .onPolygonClick((polygon) => {
+              if (polygon && polygon.properties) {
+                const countryData = countriesData.find(
+                  (c) => c.code === polygon.properties.ISO_A2
+                );
+                if (countryData) {
+                  showCountryInfo(countryData);
+                }
+              }
+            })
+            .polygonCapMaterial(
+              () =>
+                new THREE.MeshLambertMaterial({
+                  color: "#efefef",
+                  side: THREE.DoubleSide,
+                  transparent: true,
+                  opacity: 0.7,
+                })
+            );
+        } catch (error) {
+          console.error("載入國家邊界失敗:", error);
+        }
+
+        // 添加首都標記點
+        world
+          .pointsData(countriesData)
+          .pointLat("lat")
+          .pointLng("lng")
+          .pointAltitude(0.01)
+          .pointColor(() => "#ff4444")
+          .pointRadius(0.15)
+          .pointLabel(
+            (
+              d
+            ) => `<div style="background: rgba(0,0,0,0.8); padding: 8px; border-radius: 5px; color: white;">
+            <b>${d.name}</b><br/>
+            首都: ${d.capital}
+          </div>`
+          )
+          .onPointClick((point) => {
+            showCountryInfo(point);
+          });
+
+        // 設置初始視角
+        world.pointOfView({ lat: 25.033, lng: 121.5654, altitude: 2.5 }, 1000);
+
+        // 啟用控制器
+        world.controls().enableZoom = true;
+        world.controls().autoRotate = false;
+        world.controls().autoRotateSpeed = 0.5;
+
+        // 響應式設計
+        window.addEventListener("resize", () => {
+          world.width(window.innerWidth);
+          world.height(window.innerHeight);
+        });
+
+        // 隱藏載入提示
+        document.getElementById("loading").style.display = "none";
+      }
+
+      // 顯示國家資訊
+      function showCountryInfo(country) {
+        selectedCountry = country;
+        document.getElementById("countryName").textContent = country.name;
+        document.getElementById("capitalName").textContent = country.capital;
+        document.getElementById("countryNameEn").textContent = country.nameEn;
+        document.getElementById("countryInfo").classList.add("active");
+
+        // 移動視角到該國家
+        world.pointOfView(
+          {
+            lat: country.lat,
+            lng: country.lng,
+            altitude: 1.5,
+          },
+          1000
+        );
+      }
+
+      // 關閉國家資訊面板
+      function closeCountryInfo() {
+        document.getElementById("countryInfo").classList.remove("active");
+        stopAnthem();
+        selectedCountry = null;
+      }
+
+      // 播放國歌
+      function playAnthem() {
+        if (!selectedCountry) return;
+
+        const player = document.getElementById("anthemPlayer");
+
+        // 使用國歌的免費資源庫（Wikimedia Commons）
+        // 格式: https://commons.wikimedia.org/wiki/National_anthem_of_[Country]
+        const anthemUrls = {
+          TW: "https://upload.wikimedia.org/wikipedia/commons/a/a4/National_Anthem_of_the_Republic_of_China.ogg",
+          US: "https://upload.wikimedia.org/wikipedia/commons/e/e6/United_States_National_Anthem.ogg",
+          JP: "https://upload.wikimedia.org/wikipedia/commons/6/68/Kimi_ga_Yo_instrumental.ogg",
+          CN: "https://upload.wikimedia.org/wikipedia/commons/a/a6/March_of_the_Volunteers_instrumental.ogg",
+          GB: "https://upload.wikimedia.org/wikipedia/commons/7/7f/God_Save_the_King_instrumental.ogg",
+          FR: "https://upload.wikimedia.org/wikipedia/commons/f/fd/La_Marseillaise.ogg",
+          DE: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Instrumental_version_of_Deutschlandlied.ogg",
+          IT: "https://upload.wikimedia.org/wikipedia/commons/0/00/Inno_di_Mameli_instrumental.ogg",
+          ES: "https://upload.wikimedia.org/wikipedia/commons/a/a0/National_Anthem_of_Spain_-_US_Navy_Band.ogg",
+          RU: "https://upload.wikimedia.org/wikipedia/commons/f/f3/Anthem_of_Russia_instrumental.ogg",
+          BR: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Hino_Nacional_Brasileiro_instrumental.ogg",
+          IN: "https://upload.wikimedia.org/wikipedia/commons/9/94/Jana_Gana_Mana_instrumental.ogg",
+          KR: "https://upload.wikimedia.org/wikipedia/commons/1/1f/Aegukga_instrumental.ogg",
+          CA: "https://upload.wikimedia.org/wikipedia/commons/3/3b/O_Canada_instrumental.ogg",
+          AU: "https://upload.wikimedia.org/wikipedia/commons/4/4d/Advance_Australia_Fair_instrumental.ogg",
+          MX: "https://upload.wikimedia.org/wikipedia/commons/5/5f/Mexican_National_Anthem_Instrumental.ogg",
+        };
+
+        const anthemUrl = anthemUrls[selectedCountry.code];
+
+        if (anthemUrl) {
+          player.src = anthemUrl;
+          player.play();
+
+          // 5秒後停止
+          setTimeout(() => {
+            stopAnthem();
+          }, 5000);
+        } else {
+          alert(`抱歉，暫時沒有${selectedCountry.name}的國歌資源`);
+        }
+      }
+
+      // 停止播放國歌
+      function stopAnthem() {
+        const player = document.getElementById("anthemPlayer");
+        player.pause();
+        player.currentTime = 0;
+      }
+
+      // 控制變量
+      let rotating = false;
+      let rotationInterval;
+
+      // 自動旋轉功能
+      function autoRotate() {
+        if (!rotating && world) {
+          rotating = true;
+          rotationInterval = setInterval(() => {
+            const controls = world.controls();
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+          }, 16);
+        }
+      }
+
+      // 停止旋轉
+      function stopRotation() {
+        if (rotating && world) {
+          rotating = false;
+          clearInterval(rotationInterval);
+          const controls = world.controls();
+          controls.autoRotate = false;
+        }
+      }
+
+      // 重置視角
+      function resetView() {
+        if (world) {
+          stopRotation();
+          world.pointOfView(
+            { lat: 25.033, lng: 121.5654, altitude: 2.5 },
+            1000
+          );
+        }
+      }
+
+      // 放大
+      function zoomIn() {
+        if (world) {
+          const pov = world.pointOfView();
+          const newAltitude = Math.max(pov.altitude - 0.5, 0.5);
+          world.pointOfView(
+            {
+              lat: pov.lat,
+              lng: pov.lng,
+              altitude: newAltitude,
+            },
+            300
+          );
+        }
+      }
+
+      // 縮小
+      function zoomOut() {
+        if (world) {
+          const pov = world.pointOfView();
+          const newAltitude = Math.min(pov.altitude + 0.5, 5);
+          world.pointOfView(
+            {
+              lat: pov.lat,
+              lng: pov.lng,
+              altitude: newAltitude,
+            },
+            300
+          );
+        }
+      }
+
+      // 頁面載入後初始化
+      window.addEventListener("load", initGlobe);
+    </script>
+  </body>
+</html>

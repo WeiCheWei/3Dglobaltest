@@ -189,8 +189,11 @@
         <span id="countryNameEn">-</span>
       </div>
       <div class="audio-controls">
-        <button onclick="playAnthem()">🎵 播放國歌</button>
+        <button onclick="playAnthem()">🎵 播放國歌（5秒）</button>
         <button onclick="stopAnthem()">⏹️ 停止</button>
+        <div style="font-size: 11px; color: #666; margin-top: 8px;">
+          ⚠️ 如無法播放，請檢查網路連線
+        </div>
       </div>
     </div>
 
@@ -201,7 +204,7 @@
     <script src="//unpkg.com/globe.gl"></script>
 
     <!-- Audio element for anthem -->
-    <audio id="anthemPlayer" style="display: none"></audio>
+    <audio id="anthemPlayer" preload="auto" crossorigin="anonymous" style="display: none"></audio>
 
     <script>
       // 世界主要100個國家數據（繁體中文）
@@ -1137,42 +1140,60 @@
       }
 
       // 播放國歌
-      function playAnthem() {
+      async function playAnthem() {
         if (!selectedCountry) return;
 
         const player = document.getElementById("anthemPlayer");
 
-        // 使用國歌的免費資源庫（Wikimedia Commons）
-        // 格式: https://commons.wikimedia.org/wiki/National_anthem_of_[Country]
+        // 使用國歌的免費資源庫（Wikimedia Commons）- 使用 MP3 格式以提高兼容性
         const anthemUrls = {
-          TW: "https://upload.wikimedia.org/wikipedia/commons/a/a4/National_Anthem_of_the_Republic_of_China.ogg",
-          US: "https://upload.wikimedia.org/wikipedia/commons/e/e6/United_States_National_Anthem.ogg",
-          JP: "https://upload.wikimedia.org/wikipedia/commons/6/68/Kimi_ga_Yo_instrumental.ogg",
-          CN: "https://upload.wikimedia.org/wikipedia/commons/a/a6/March_of_the_Volunteers_instrumental.ogg",
-          GB: "https://upload.wikimedia.org/wikipedia/commons/7/7f/God_Save_the_King_instrumental.ogg",
-          FR: "https://upload.wikimedia.org/wikipedia/commons/f/fd/La_Marseillaise.ogg",
-          DE: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Instrumental_version_of_Deutschlandlied.ogg",
-          IT: "https://upload.wikimedia.org/wikipedia/commons/0/00/Inno_di_Mameli_instrumental.ogg",
-          ES: "https://upload.wikimedia.org/wikipedia/commons/a/a0/National_Anthem_of_Spain_-_US_Navy_Band.ogg",
-          RU: "https://upload.wikimedia.org/wikipedia/commons/f/f3/Anthem_of_Russia_instrumental.ogg",
-          BR: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Hino_Nacional_Brasileiro_instrumental.ogg",
-          IN: "https://upload.wikimedia.org/wikipedia/commons/9/94/Jana_Gana_Mana_instrumental.ogg",
-          KR: "https://upload.wikimedia.org/wikipedia/commons/1/1f/Aegukga_instrumental.ogg",
-          CA: "https://upload.wikimedia.org/wikipedia/commons/3/3b/O_Canada_instrumental.ogg",
-          AU: "https://upload.wikimedia.org/wikipedia/commons/4/4d/Advance_Australia_Fair_instrumental.ogg",
-          MX: "https://upload.wikimedia.org/wikipedia/commons/5/5f/Mexican_National_Anthem_Instrumental.ogg",
+          TW: "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a4/National_Anthem_of_the_Republic_of_China.ogg/National_Anthem_of_the_Republic_of_China.ogg.mp3",
+          US: "https://upload.wikimedia.org/wikipedia/commons/transcoded/e/e6/United_States_National_Anthem.ogg/United_States_National_Anthem.ogg.mp3",
+          JP: "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/68/Kimi_ga_Yo_instrumental.ogg/Kimi_ga_Yo_instrumental.ogg.mp3",
+          CN: "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a6/March_of_the_Volunteers_instrumental.ogg/March_of_the_Volunteers_instrumental.ogg.mp3",
+          GB: "https://upload.wikimedia.org/wikipedia/commons/transcoded/7/7f/God_Save_the_King_instrumental.ogg/God_Save_the_King_instrumental.ogg.mp3",
+          FR: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/fd/La_Marseillaise.ogg/La_Marseillaise.ogg.mp3",
+          DE: "https://upload.wikimedia.org/wikipedia/commons/transcoded/d/d9/Instrumental_version_of_Deutschlandlied.ogg/Instrumental_version_of_Deutschlandlied.ogg.mp3",
+          IT: "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/00/Inno_di_Mameli_instrumental.ogg/Inno_di_Mameli_instrumental.ogg.mp3",
+          ES: "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/National_Anthem_of_Spain_-_US_Navy_Band.ogg/National_Anthem_of_Spain_-_US_Navy_Band.ogg.mp3",
+          RU: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f3/Anthem_of_Russia_instrumental.ogg/Anthem_of_Russia_instrumental.ogg.mp3",
+          BR: "https://upload.wikimedia.org/wikipedia/commons/transcoded/9/9b/Hino_Nacional_Brasileiro_instrumental.ogg/Hino_Nacional_Brasileiro_instrumental.ogg.mp3",
+          IN: "https://upload.wikimedia.org/wikipedia/commons/transcoded/9/94/Jana_Gana_Mana_instrumental.ogg/Jana_Gana_Mana_instrumental.ogg.mp3",
+          KR: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/1f/Aegukga_instrumental.ogg/Aegukga_instrumental.ogg.mp3",
+          CA: "https://upload.wikimedia.org/wikipedia/commons/transcoded/3/3b/O_Canada_instrumental.ogg/O_Canada_instrumental.ogg.mp3",
+          AU: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4d/Advance_Australia_Fair_instrumental.ogg/Advance_Australia_Fair_instrumental.ogg.mp3",
+          MX: "https://upload.wikimedia.org/wikipedia/commons/transcoded/5/5f/Mexican_National_Anthem_Instrumental.ogg/Mexican_National_Anthem_Instrumental.ogg.mp3",
         };
 
         const anthemUrl = anthemUrls[selectedCountry.code];
 
         if (anthemUrl) {
-          player.src = anthemUrl;
-          player.play();
-
-          // 5秒後停止
-          setTimeout(() => {
-            stopAnthem();
-          }, 5000);
+          try {
+            player.src = anthemUrl;
+            player.load(); // 預載音檔
+            
+            // 嘗試播放
+            const playPromise = player.play();
+            
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  console.log(`正在播放 ${selectedCountry.name} 的國歌`);
+                  
+                  // 5秒後停止
+                  setTimeout(() => {
+                    stopAnthem();
+                  }, 5000);
+                })
+                .catch(error => {
+                  console.error('播放失敗:', error);
+                  alert(`播放失敗：${error.message}\n\n可能原因：\n1. 瀏覽器阻止自動播放\n2. 網路連線問題\n3. 音檔無法載入\n\n請稍後再試或檢查網路連線。`);
+                });
+            }
+          } catch (error) {
+            console.error('載入音檔失敗:', error);
+            alert(`載入音檔失敗：${error.message}\n請檢查網路連線後重試。`);
+          }
         } else {
           alert(`抱歉，暫時沒有${selectedCountry.name}的國歌資源`);
         }

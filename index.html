@@ -189,10 +189,10 @@
         <span id="countryNameEn">-</span>
       </div>
       <div class="audio-controls">
-        <button onclick="playAnthem()">🎵 播放國歌音檔</button>
+        <button onclick="playAnthem()">🎵 播放國歌</button>
         <button onclick="openWikipedia()">📖 查看維基百科</button>
         <div style="font-size: 11px; color: #666; margin-top: 8px">
-          💡 點擊播放按鈕將開啟音檔播放頁面
+          💡 將開啟新頁面播放國歌音檔
         </div>
       </div>
     </div>
@@ -1135,36 +1135,36 @@
         selectedCountry = null;
       }
 
-      // 播放國歌 - 直接在新分頁打開音檔
+      // 播放國歌 - 打開 Wikimedia Commons 文件頁面（包含播放器）
       function playAnthem() {
         if (!selectedCountry) return;
 
-        // 國歌音檔連結
+        // 使用 Wikimedia Commons 文件頁面（包含內建播放器，更穩定）
         const anthemUrls = {
-          TW: "https://upload.wikimedia.org/wikipedia/commons/a/a4/National_Anthem_of_the_Republic_of_China.ogg",
-          US: "https://upload.wikimedia.org/wikipedia/commons/e/e6/United_States_National_Anthem.ogg",
-          JP: "https://upload.wikimedia.org/wikipedia/commons/6/68/Kimi_ga_Yo_instrumental.ogg",
-          CN: "https://upload.wikimedia.org/wikipedia/commons/8/88/March_of_the_Volunteers.ogg",
-          GB: "https://upload.wikimedia.org/wikipedia/commons/b/b9/God_Save_the_King_instrumental.ogg",
-          FR: "https://upload.wikimedia.org/wikipedia/commons/f/fd/La_Marseillaise.ogg",
-          DE: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Instrumental_version_of_Deutschlandlied.ogg",
-          IT: "https://upload.wikimedia.org/wikipedia/commons/0/00/Inno_di_Mameli_instrumental.ogg",
-          ES: "https://upload.wikimedia.org/wikipedia/commons/a/a0/National_Anthem_of_Spain_-_US_Navy_Band.ogg",
-          RU: "https://upload.wikimedia.org/wikipedia/commons/f/f3/Anthem_of_Russia_instrumental.ogg",
-          BR: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Hino_Nacional_Brasileiro_instrumental.ogg",
-          IN: "https://upload.wikimedia.org/wikipedia/commons/9/94/Jana_Gana_Mana_instrumental.ogg",
-          KR: "https://upload.wikimedia.org/wikipedia/commons/1/1f/Aegukga_instrumental.ogg",
-          CA: "https://upload.wikimedia.org/wikipedia/commons/3/3b/O_Canada_instrumental.ogg",
-          AU: "https://upload.wikimedia.org/wikipedia/commons/2/2e/Advance_Australia_Fair_instrumental.ogg",
-          MX: "https://upload.wikimedia.org/wikipedia/commons/5/5f/Mexican_National_Anthem_Instrumental.ogg",
+          TW: "https://commons.wikimedia.org/wiki/File:National_Anthem_of_the_Republic_of_China.ogg",
+          US: "https://commons.wikimedia.org/wiki/File:United_States_National_Anthem.ogg",
+          JP: "https://commons.wikimedia.org/wiki/File:Kimi_ga_Yo_instrumental.ogg",
+          CN: "https://commons.wikimedia.org/wiki/File:March_of_the_Volunteers.ogg",
+          GB: "https://commons.wikimedia.org/wiki/File:God_Save_the_King_instrumental.ogg",
+          FR: "https://commons.wikimedia.org/wiki/File:La_Marseillaise.ogg",
+          DE: "https://commons.wikimedia.org/wiki/File:Deutschlandlied_instrumental.ogg",
+          IT: "https://commons.wikimedia.org/wiki/File:Inno_di_Mameli_instrumental.ogg",
+          ES: "https://commons.wikimedia.org/wiki/File:Marcha_Real_instrumental.ogg",
+          RU: "https://commons.wikimedia.org/wiki/File:Anthem_of_Russia_instrumental.ogg",
+          BR: "https://commons.wikimedia.org/wiki/File:Hino_Nacional_Brasileiro_instrumental.ogg",
+          IN: "https://commons.wikimedia.org/wiki/File:Jana_Gana_Mana_instrumental.ogg",
+          KR: "https://commons.wikimedia.org/wiki/File:Aegukga_instrumental.ogg",
+          CA: "https://commons.wikimedia.org/wiki/File:O_Canada_instrumental.ogg",
+          AU: "https://commons.wikimedia.org/wiki/File:Advance_Australia_Fair_instrumental.ogg",
+          MX: "https://commons.wikimedia.org/wiki/File:Mexican_National_Anthem_Instrumental.ogg",
         };
 
         const anthemUrl = anthemUrls[selectedCountry.code];
 
         if (anthemUrl) {
-          // 直接在新分頁打開音檔，讓瀏覽器自己處理播放
-          window.open(anthemUrl, '_blank');
-          console.log(`已開啟 ${selectedCountry.name} 的國歌音檔`);
+          // 在新分頁打開 Wikimedia Commons 文件頁面，有內建播放器
+          window.open(anthemUrl, "_blank");
+          console.log(`已開啟 ${selectedCountry.name} 的國歌頁面`);
         } else {
           alert(
             `抱歉，暫時沒有${selectedCountry.name}的國歌資源\n\n建議點擊「查看維基百科」按鈕以獲取更多資訊`

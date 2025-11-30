@@ -189,11 +189,10 @@
         <span id="countryNameEn">-</span>
       </div>
       <div class="audio-controls">
-        <button onclick="playAnthem()">🎵 播放國歌（5秒）</button>
-        <button onclick="stopAnthem()">⏹️ 停止</button>
+        <button onclick="playAnthem()">🎵 播放國歌音檔</button>
         <button onclick="openWikipedia()">📖 查看維基百科</button>
         <div style="font-size: 11px; color: #666; margin-top: 8px">
-          💡 點擊維基百科按鈕可查看完整國歌
+          💡 點擊播放按鈕將開啟音檔播放頁面
         </div>
       </div>
     </div>
@@ -203,14 +202,6 @@
     <!-- 載入 Globe.gl 和 Three.js 庫 -->
     <script src="//unpkg.com/three"></script>
     <script src="//unpkg.com/globe.gl"></script>
-
-    <!-- Audio element for anthem -->
-    <audio
-      id="anthemPlayer"
-      preload="auto"
-      crossorigin="anonymous"
-      style="display: none"
-    ></audio>
 
     <script>
       // 世界主要100個國家數據（繁體中文）
@@ -1141,17 +1132,14 @@
       // 關閉國家資訊面板
       function closeCountryInfo() {
         document.getElementById("countryInfo").classList.remove("active");
-        stopAnthem();
         selectedCountry = null;
       }
 
-      // 播放國歌
-      async function playAnthem() {
+      // 播放國歌 - 直接在新分頁打開音檔
+      function playAnthem() {
         if (!selectedCountry) return;
 
-        const player = document.getElementById("anthemPlayer");
-        
-        // 更新的國歌音檔連結 - 使用直接的 OGG 檔案
+        // 國歌音檔連結
         const anthemUrls = {
           TW: "https://upload.wikimedia.org/wikipedia/commons/a/a4/National_Anthem_of_the_Republic_of_China.ogg",
           US: "https://upload.wikimedia.org/wikipedia/commons/e/e6/United_States_National_Anthem.ogg",
@@ -1174,53 +1162,20 @@
         const anthemUrl = anthemUrls[selectedCountry.code];
 
         if (anthemUrl) {
-          try {
-            // 停止之前的播放
-            stopAnthem();
-            
-            player.src = anthemUrl;
-            player.volume = 0.7; // 設定音量為 70%
-            
-            // 等待載入並播放
-            await player.load();
-            
-            try {
-              await player.play();
-              console.log(`正在播放 ${selectedCountry.name} 的國歌`);
-              
-              // 5秒後停止
-              setTimeout(() => {
-                stopAnthem();
-              }, 5000);
-              
-            } catch (playError) {
-              console.error("播放失敗:", playError);
-              // 如果播放失敗，提供維基百科連結作為備用方案
-              const confirmOpen = confirm(
-                `無法直接播放國歌音檔\n\n是否要前往維基百科頁面聆聽完整版國歌？\n（點擊「確定」將開啟新分頁）`
-              );
-              if (confirmOpen) {
-                openWikipedia();
-              }
-            }
-          } catch (error) {
-            console.error("載入音檔失敗:", error);
-            const confirmOpen = confirm(
-              `載入音檔失敗\n\n是否要前往維基百科頁面聆聽完整版國歌？\n（點擊「確定」將開啟新分頁）`
-            );
-            if (confirmOpen) {
-              openWikipedia();
-            }
-          }
+          // 直接在新分頁打開音檔，讓瀏覽器自己處理播放
+          window.open(anthemUrl, '_blank');
+          console.log(`已開啟 ${selectedCountry.name} 的國歌音檔`);
         } else {
-          alert(`抱歉，暫時沒有${selectedCountry.name}的國歌資源\n\n建議點擊「查看維基百科」按鈕以獲取更多資訊`);
+          alert(
+            `抱歉，暫時沒有${selectedCountry.name}的國歌資源\n\n建議點擊「查看維基百科」按鈕以獲取更多資訊`
+          );
         }
       }
-      
+
       // 打開維基百科頁面
       function openWikipedia() {
         if (!selectedCountry) return;
-        
+
         // 維基百科中文頁面連結對應
         const wikipediaPages = {
           TW: "https://zh.wikipedia.org/zh-tw/中華民國國歌",
@@ -1238,21 +1193,22 @@
           KR: "https://zh.wikipedia.org/zh-tw/愛國歌",
           CA: "https://zh.wikipedia.org/zh-tw/啊，加拿大",
           AU: "https://zh.wikipedia.org/zh-tw/前進，美麗的澳大利亞",
-          MX: "https://zh.wikipedia.org/zh-tw/墨西哥國歌"
+          MX: "https://zh.wikipedia.org/zh-tw/墨西哥國歌",
         };
-        
+
         // 如果有對應的維基百科頁面，打開它；否則搜尋該國家
-        const wikiUrl = wikipediaPages[selectedCountry.code] || 
-                        `https://zh.wikipedia.org/wiki/${encodeURIComponent(selectedCountry.name)}`;
-        
-        window.open(wikiUrl, '_blank');
+        const wikiUrl =
+          wikipediaPages[selectedCountry.code] ||
+          `https://zh.wikipedia.org/wiki/${encodeURIComponent(
+            selectedCountry.name
+          )}`;
+
+        window.open(wikiUrl, "_blank");
       }
 
-      // 停止播放國歌
+      // 停止播放國歌（已不再使用，保留以維持相容性）
       function stopAnthem() {
-        const player = document.getElementById("anthemPlayer");
-        player.pause();
-        player.currentTime = 0;
+        // 不再需要此功能，因為音檔在新分頁播放
       }
 
       // 控制變量
